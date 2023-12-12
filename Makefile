@@ -1,5 +1,7 @@
 all: coro_demo
 
+CXX=clang++
+CXXFLAGS+=-std=c++20
 OBJS=main.o
 
 coro_demo: $(OBJS)
