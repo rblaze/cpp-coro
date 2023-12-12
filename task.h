@@ -2,16 +2,43 @@
 
 #include <coroutine>
 #include <future>
+#include <optional>
 
-// Enable the use of std::future<T> as a coroutine type
-// by using a std::promise<T> as the promise type.
+struct Unit {};
+
+template <typename T>
+class Task {
+ public:
+  explicit Task(std::promise<T>& promise)
+      : future_(promise.get_future()), handle_(Handle::from_promise(promise)) {}
+
+  std::optional<T> poll() {
+    handle_.resume();
+
+    if (handle_.done()) {
+      return future_.get();
+    }
+
+    return std::nullopt;
+  }
+
+  using Promise = std::promise<T>;
+
+ private:
+  using Handle = std::coroutine_handle<Promise>;
+
+  std::future<T> future_;
+  std::coroutine_handle<Promise> handle_;
+};
+
 template <typename T, typename... Args>
 //   requires(!std::is_void_v<T> && !std::is_reference_v<T>)
-struct std::coroutine_traits<std::future<T>, Args...> {
-  struct promise_type : std::promise<T> {
-    std::future<T> get_return_object() noexcept { return this->get_future(); }
+struct std::coroutine_traits<Task<T>, Args...> {
+  struct promise_type : Task<T>::Promise {
+    Task<T> get_return_object() noexcept { return Task(*this); }
 
-    std::suspend_never initial_suspend() const noexcept { return {}; }
+    // Lazy coroutine, does nothing unless polled.
+    std::suspend_always initial_suspend() const noexcept { return {}; }
     std::suspend_never final_suspend() const noexcept { return {}; }
 
     void return_value(const T& value) noexcept(
@@ -29,5 +56,3 @@ struct std::coroutine_traits<std::future<T>, Args...> {
     }
   };
 };
-
-template<typename T> using Task = std::future<T>;

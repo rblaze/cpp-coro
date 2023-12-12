@@ -1,9 +1,9 @@
 #pragma once
 
-#include <future>
+#include "task.h"
 
 class Executor {
  public:
-  void spawn(std::future<void>);
+  void spawn(Task<Unit>);
   void run_until_complete();
 };
