@@ -2,6 +2,7 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
     "cmake.configureOnOpen": true,
     "files.associations": {
-        "future": "cpp"
+        "future": "cpp",
+        "coroutine": "cpp"
     }
 }
