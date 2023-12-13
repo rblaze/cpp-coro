@@ -2,7 +2,18 @@
 
 #include "task.h"
 
-Task<void> void_coro(int);
+Task<void> void_coro(int id, bool suspend) {
+  if (suspend) {
+    printf("void_coro %d: suspend\n", id);
+    co_await std::suspend_always{};
+
+    // printf("void_coro %d: suspend 2\n", id);
+    // co_await std::suspend_always{};
+  }
+
+  printf("void_coro %d: return\n", id);
+  co_return;
+}
 
 Task<int> coro_add(int a, int b) {
   printf("coro_add: returning %d + %d\n", a, b);
@@ -10,12 +21,18 @@ Task<int> coro_add(int a, int b) {
 }
 
 Task<int> coro() {
-  // Voluntary yield control
+  // Cocoutines can voluntary yield control
   printf("coro: suspend\n");
   co_await std::suspend_always{};
 
+  printf("coro: suspend 2\n");
+  co_await std::suspend_always{};
+
   printf("coro: await void\n");
-  co_await void_coro(1);
+  co_await void_coro(1, false);
+
+  printf("coro: await void\n");
+  co_await void_coro(2, true);
 
   printf("coro: await coro_add\n");
   int ret = co_await coro_add(40, 2);
@@ -24,21 +41,16 @@ Task<int> coro() {
   co_return ret;
 }
 
-Task<void> void_coro(int id) {
-  printf("void_coro %d: return\n", id);
-  co_return;
-}
-
 int main() {
   try {
     auto task = coro();
-    auto void_task = void_coro(0);
+    auto void_task = void_coro(0, false);
 
     bool task_ready;
     bool void_task_ready;
 
     do {
-      printf("polling coroutines\n");
+      printf("\nEXECUTOR: polling coroutines\n");
       task_ready = task.poll();
       void_task_ready = void_task.poll();
     } while (!(task_ready && void_task_ready));
