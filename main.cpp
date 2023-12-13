@@ -2,13 +2,17 @@
 
 #include "task.h"
 
-Task<int> coro() { 
-  printf("in coro\n");
-  co_return 42; 
+Task<int> coro() {
+  // Voluntary yield control
+  printf("coro: suspend\n");
+  co_await std::suspend_always{};
+
+  printf("coro: return\n");
+  co_return 42;
 }
 
 Task<void> void_coro() {
-  printf("in void coro\n");
+  printf("void_coro: return\n");
   co_return;
 }
 
@@ -16,30 +20,17 @@ int main() {
   try {
     auto task = coro();
     auto void_task = void_coro();
-    int v;
 
-    for (;;) {
-      printf("polling coro\n");
-      auto maybe_v = task.poll();
+    bool task_ready;
+    bool void_task_ready;
 
-      if (maybe_v) {
-        v = *maybe_v;
-        break;
-      }
-    }
+    do {
+      printf("polling coroutines\n");
+      task_ready = task.poll();
+      void_task_ready = void_task.poll();
+    } while (! (task_ready && void_task_ready));
 
-    printf("v = %d\n", v);
-
-    // for (;;) {
-    //   printf("polling void coro\n");
-    //   auto maybe_v = void_task.poll();
-
-    //   if (maybe_v) {
-    //     break;
-    //   }
-    // }
-
-    // printf("got void\n");
+    printf("v = %d\n", std::move(task).get());
   } catch (std::exception& e) {
     printf("exc: %s\n", e.what());
   }

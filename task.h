@@ -17,19 +17,22 @@ class Task {
   explicit Task(Promise<T>& promise)
       : future_(promise.get_future()), handle_(Handle::from_promise(promise)) {}
 
-  // Rust-style API: run the coroutine and return its value once complete
-  std::optional<T> poll() {
-    handle_.resume();
+  // Run coroutine until it returns control
+  bool poll() {
+    if (handle_) {
+      handle_.resume();
 
-    // If coroutine is at final suspension point, delete it and return the
-    // value. Or throw its exception.
-    if (handle_.done()) {
-      handle_.destroy();
-      return future_.get();
+      if (handle_.done()) {
+        handle_.destroy();
+        handle_ = nullptr;
+      }
     }
 
-    return std::nullopt;
+    return !handle_;
   }
+
+  // Get return value once
+  T get() && { return future_.get(); }
 
  private:
   using Handle = std::coroutine_handle<Promise<T>>;
@@ -39,32 +42,29 @@ class Task {
 };
 
 // Coroutine internals
-template <>
-struct Promise<void> : public std::promise<void> {
-  Task<void> get_return_object() noexcept { return Task<void>(*this); }
-
+template <typename T>
+struct PromiseBase : public std::promise<T> {
   // Lazy coroutine, does nothing unless polled.
   std::suspend_always initial_suspend() const noexcept { return {}; }
   // Delay coroutine destruction until requested: std::future lacks API to check
   // if value is present.
   std::suspend_always final_suspend() const noexcept { return {}; }
-
-  void return_void() noexcept { this->set_value(); }
 
   void unhandled_exception() noexcept {
     this->set_exception(std::current_exception());
   }
 };
 
-template <typename T>
-struct Promise : public std::promise<T> {
-  Task<T> get_return_object() noexcept { return Task(*this); }
+template <>
+struct Promise<void> : public PromiseBase<void> {
+  Task<void> get_return_object() noexcept { return Task<void>(*this); }
 
-  // Lazy coroutine, does nothing unless polled.
-  std::suspend_always initial_suspend() const noexcept { return {}; }
-  // Delay coroutine destruction until requested: std::future lacks API to check
-  // if value is present.
-  std::suspend_always final_suspend() const noexcept { return {}; }
+  void return_void() noexcept { this->set_value(); }
+};
+
+template <typename T>
+struct Promise : public PromiseBase<T> {
+  Task<T> get_return_object() noexcept { return Task(*this); }
 
   void return_value(const T& value) noexcept(
       std::is_nothrow_copy_constructible_v<T>) {
@@ -74,9 +74,5 @@ struct Promise : public std::promise<T> {
   void return_value(T&& value) noexcept(
       std::is_nothrow_move_constructible_v<T>) {
     this->set_value(std::move(value));
-  }
-
-  void unhandled_exception() noexcept {
-    this->set_exception(std::current_exception());
   }
 };
