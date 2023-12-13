@@ -23,8 +23,7 @@ class Task {
       handle_.resume();
 
       if (handle_.done()) {
-        handle_.destroy();
-        handle_ = nullptr;
+        destroy_handle();
       }
     }
 
@@ -34,8 +33,24 @@ class Task {
   // Get return value once
   T get() && { return future_.get(); }
 
+  bool await_ready() const { return !handle_; }
+  
+  std::coroutine_handle<> await_suspend(std::coroutine_handle<>) {
+    return handle_;
+  }
+
+  T await_resume() {
+    destroy_handle();
+    return future_.get();
+  }
+
  private:
   using Handle = std::coroutine_handle<Promise<T>>;
+
+  void destroy_handle() {
+    handle_.destroy();
+    handle_ = nullptr;
+  }
 
   std::future<T> future_;
   Handle handle_;
