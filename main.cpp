@@ -7,8 +7,8 @@ Task<void> void_coro(int id, bool suspend) {
     printf("void_coro %d: suspend\n", id);
     co_await std::suspend_always{};
 
-    // printf("void_coro %d: suspend 2\n", id);
-    // co_await std::suspend_always{};
+    printf("void_coro %d: suspend 2\n", id);
+    co_await std::suspend_always{};
   }
 
   printf("void_coro %d: return\n", id);
@@ -28,10 +28,10 @@ Task<int> coro() {
   printf("coro: suspend 2\n");
   co_await std::suspend_always{};
 
-  printf("coro: await void\n");
+  printf("coro: await void 1\n");
   co_await void_coro(1, false);
 
-  printf("coro: await void\n");
+  printf("coro: await void 2\n");
   co_await void_coro(2, true);
 
   printf("coro: await coro_add\n");

@@ -1,7 +1,7 @@
 all: coro_demo
 
 CXX=clang++
-CXXFLAGS+=-std=c++20 -ggdb -W -Wall
+CXXFLAGS+=-std=c++20 -ggdb -W -Wall -O0
 OBJS=main.o
 
 CXXFLAGS+=-fsanitize=address

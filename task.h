@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <coroutine>
 #include <future>
 #include <optional>
@@ -15,12 +16,15 @@ class Task {
   using promise_type = Promise<T>;
 
   explicit Task(Promise<T>& promise)
-      : future_(promise.get_future()), handle_(Handle::from_promise(promise)) {}
+      : future_(promise.get_future()), handle_(Handle::from_promise(promise)) {
+    printf("Task %p %p\n", handle_.address(), this);
+  }
 
   // Run coroutine until it returns control
   bool poll() {
     if (handle_) {
       if (!handle_.done()) {
+        printf("resume %p %p\n", handle_.address(), this);
         handle_.resume();
       }
 
@@ -29,21 +33,29 @@ class Task {
       }
     }
 
+    printf("polled %p %p\n", handle_.address(), this);
+
     return !handle_;
   }
 
   // Get return value once
   T get() && { return future_.get(); }
 
-  bool await_ready() const { return !handle_ || handle_.done(); }
+  // awaiter implementation
+  bool await_ready() const {
+    printf("await_ready %p %p\n", handle_.address(), this);
+    return !handle_ || handle_.done();
+  }
 
-  std::coroutine_handle<> await_suspend(std::coroutine_handle<>) {
-    printf("returning handle\n");
-    return handle_;
+  void await_suspend(std::coroutine_handle<> parent) {
+    printf("await_suspend %p %p <- %p\n", handle_.address(), this,
+           parent.address());
+    // Need to add handle_ to parent as blocker, so poll will resume it first.
+    // How to get parent Task from parent handle?
   }
 
   T await_resume() {
-    printf("await_resume\n");
+    printf("await_resume %p %p\n", handle_.address(), this);
     if (handle_) {
       destroy_handle();
     }
