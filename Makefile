@@ -6,7 +6,7 @@ OBJS=main.o
 
 CXXFLAGS+=-fsanitize=address
 
-main.o: main.cpp task.h
+main.o: main.cpp coro.h task.h promise.h executor.h
 
 coro_demo: $(OBJS)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
