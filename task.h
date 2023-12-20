@@ -10,10 +10,10 @@
 
 namespace coro::impl {
 
-template <typename P>
+template <typename T>
 class ScheduledTask {
  public:
-  explicit ScheduledTask(std::coroutine_handle<P>&& handle, Executor& executor)
+  ScheduledTask(std::coroutine_handle<Promise<T>>&& handle, Executor& executor)
       : handle_(handle), executor_(executor) {
     printf("ScheduledTask %p %p\n", handle_.address(), this);
     handle_.promise().set_executor(&executor_);
@@ -28,7 +28,7 @@ class ScheduledTask {
     }
   }
 
-  typename P::ReturnType get() && {
+  T get() && {
     printf("get %p %s %p\n", handle_.address(),
            handle_.done() ? "done" : "NOT_DONE", this);
     return handle_.promise().get_future().get();
@@ -48,7 +48,7 @@ class ScheduledTask {
     parent_ = parent;
   }
 
-  typename P::ReturnType await_resume() {
+  T await_resume() {
     printf("await_resume %p %s %p\n", handle_.address(),
            handle_.done() ? "done" : "NOT_DONE", this);
     executor_.schedule(parent_);
@@ -57,16 +57,16 @@ class ScheduledTask {
   }
 
  private:
-  std::coroutine_handle<P> handle_;
+  std::coroutine_handle<Promise<T>> handle_;
   std::coroutine_handle<> parent_ = nullptr;
   Executor& executor_;
 };
 
-// Coroutine Task class. Tasks are either eager or lazy.
-template <typename T, impl::CoroutineEagerness E>
+// Coroutine Task class.
+template <typename T>
 class Task {
  public:
-  using promise_type = typename impl::EagernessTraits<E, T>::PromiseType;
+  using promise_type = Promise<T>;
 
   explicit Task(promise_type& promise)
       : handle_(std::coroutine_handle<promise_type>::from_promise(promise)) {
@@ -81,11 +81,11 @@ class Task {
     }
   }
 
-  ScheduledTask<promise_type> schedule_on(Executor& executor) && {
+  ScheduledTask<T> schedule_on(Executor& executor) && {
     executor.schedule(handle_);
     auto handle = handle_;
     handle_ = nullptr;
-    return ScheduledTask<promise_type>(std::move(handle), executor);
+    return ScheduledTask<T>(std::move(handle), executor);
   }
 
  private:

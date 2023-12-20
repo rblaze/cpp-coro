@@ -6,56 +6,21 @@
 #include <future>
 
 namespace coro::impl {
-// Coroutines could be eager or lazy.
-// Eager coroutines run until first suspend point or completion.
-// Lazy coroutines do nothing until polled.
-enum class CoroutineEagerness { Eager, Lazy };
-
 // Forward declarations
-template <typename T, CoroutineEagerness E>
+template <typename T>
 class Task;
 
-template <typename P>
+template <typename T>
 class ScheduledTask;
 
-// Forward declarations
-template <typename T, CoroutineEagerness E>
-struct Promise;
-
-template <typename T>
-using EagerPromise = Promise<T, CoroutineEagerness::Eager>;
-
-template <typename T>
-using LazyPromise = Promise<T, CoroutineEagerness::Lazy>;
-
-// Type traits for eager and lazy coroutines.
-template <CoroutineEagerness, typename T>
-struct EagernessTraits {};
-
-template <typename T>
-struct EagernessTraits<CoroutineEagerness::Eager, T> {
-  using TaskType = Task<T, CoroutineEagerness::Eager>;
-  using PromiseType = EagerPromise<T>;
-  using InitialSuspendType = std::suspend_never;
-};
-
-template <typename T>
-struct EagernessTraits<CoroutineEagerness::Lazy, T> {
-  using TaskType = Task<T, CoroutineEagerness::Lazy>;
-  using PromiseType = LazyPromise<T>;
-  using InitialSuspendType = std::suspend_always;
-};
-
 // Coroutine promise.
-template <typename T, CoroutineEagerness E>
+template <typename T>
 class PromiseBase : public std::promise<T> {
  public:
   using ReturnType = T;
 
-  typename EagernessTraits<E, T>::InitialSuspendType initial_suspend()
-      const noexcept {
-    return {};
-  }
+  // Coroutines are lazy: they do nothing until scheduled on an executor.
+  std::suspend_always initial_suspend() const noexcept { return {}; }
 
   // Delay coroutine destruction until requested: std::future lacks API to check
   // if value is present, so we rely on handle.done() instead.
@@ -66,14 +31,7 @@ class PromiseBase : public std::promise<T> {
   }
 
   template <typename U>
-  ScheduledTask<EagerPromise<U>> await_transform(
-      Task<U, CoroutineEagerness::Eager>&& task) {
-    return std::move(task).schedule_on(*executor_);
-  }
-
-  template <typename U>
-  ScheduledTask<LazyPromise<U>> await_transform(
-      Task<U, CoroutineEagerness::Lazy>&& task) {
+  ScheduledTask<U> await_transform(Task<U>&& task) {
     return std::move(task).schedule_on(*executor_);
   }
 
@@ -83,12 +41,10 @@ class PromiseBase : public std::promise<T> {
   Executor* executor_ = nullptr;
 };
 
-// Returning any other type.
-template <typename T, CoroutineEagerness E>
-struct Promise : public PromiseBase<T, E> {
-  using TaskType = typename EagernessTraits<E, T>::TaskType;
-
-  TaskType get_return_object() noexcept { return TaskType(*this); }
+// Returning any type except void.
+template <typename T>
+struct Promise : public PromiseBase<T> {
+  Task<T> get_return_object() noexcept { return Task<T>(*this); }
 
   void return_value(const T& value) noexcept(
       std::is_nothrow_copy_constructible_v<T>) {
@@ -102,11 +58,9 @@ struct Promise : public PromiseBase<T, E> {
 };
 
 // Coroutines returning void are special.
-template <CoroutineEagerness E>
-struct Promise<void, E> : public PromiseBase<void, E> {
-  using TaskType = typename EagernessTraits<E, void>::TaskType;
-
-  TaskType get_return_object() noexcept { return TaskType(*this); }
+template <>
+struct Promise<void> : public PromiseBase<void> {
+  Task<void> get_return_object() noexcept;// { return Task<void>(*this); }
 
   void return_void() noexcept { this->set_value(); }
 };

@@ -14,3 +14,6 @@ coro_demo: $(OBJS)
 clean:
 	rm -f $(OBJS)
 	rm -f coro_demo
+
+check:
+	clang-tidy -header-filter=.* main.cpp -- $(CXXFLAGS)

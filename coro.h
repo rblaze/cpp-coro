@@ -6,20 +6,16 @@
 
 #include "executor.h"
 #include "task.h"
+#include "promise_impl.h"
 
 namespace coro {
 
-template <typename T>
-using EagerTask = impl::Task<T, impl::CoroutineEagerness::Eager>;
-
-template <typename T>
-using LazyTask = impl::Task<T, impl::CoroutineEagerness::Lazy>;
-
+using impl::Task;
 using impl::LocalExecutor;
 
 // Utility types and functions
 
-LazyTask<void> suspend() {
+Task<void> suspend() {
   printf("awaaaaake\n");
   co_return;
 }

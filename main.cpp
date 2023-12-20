@@ -2,7 +2,7 @@
 
 #include "coro.h"
 
-coro::EagerTask<void> void_coro(int id, bool suspend) {
+coro::Task<void> void_coro(int id, bool suspend) {
   if (suspend) {
     printf("void_coro %d: suspend\n", id);
     co_await coro::suspend();
@@ -15,12 +15,12 @@ coro::EagerTask<void> void_coro(int id, bool suspend) {
   co_return;
 }
 
-coro::EagerTask<int> coro_add(int a, int b) {
+coro::Task<int> coro_add(int a, int b) {
   printf("coro_add: returning %d + %d\n", a, b);
   co_return a + b;
 }
 
-coro::EagerTask<int> coro_test() {
+coro::Task<int> coro_test() {
   // Cocoutines can voluntary yield control
   printf("coro: suspend\n");
   co_await coro::suspend();
