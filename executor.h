@@ -17,25 +17,11 @@ class Executor {
 
 class LocalExecutor : public Executor {
  public:
-  void run_once() {
-    for (auto handle : handles_) {
-      if (!handle.done()) {
-        printf("resume %p\n", handle.address());
-        handle.resume();
-      }
-    }
-  }
+  void run_once();
+  void run();
 
-  void run() {
-    while (!handles_.empty()) {
-      printf("\nPOLLING %zu TASKS\n", handles_.size());
-      run_once();
-      handles_.remove_if([](const auto& handle) { return handle.done(); });
-    }
-  }
-
-  void schedule(const Handle& handle) override { handles_.push_back(handle); }
-  void deschedule(const Handle& handle) override { handles_.remove(handle); }
+  void schedule(const Handle& handle) override;
+  void deschedule(const Handle& handle) override;
 
  private:
   std::list<Handle> handles_;
