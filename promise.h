@@ -41,6 +41,10 @@ class PromiseBase : public std::promise<T> {
 
   template <typename U, typename R = U::BoundType>
   R await_transform(U&& awaitable) {
+    // clang-tidy complains about uninitialized executor_, which makes no sense:
+    // worst case it is set to nullptr by default.
+    // NOLINTNEXTLINE(clang-analyzer-core.uninitialized.Branch)
+    assert(executor_);
     return std::move(awaitable).schedule_on(*executor_);
   }
 
