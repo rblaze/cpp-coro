@@ -5,6 +5,8 @@
 #include <exception>
 #include <future>
 
+#include "event.h"
+
 namespace coro::impl {
 // Forward declarations
 template <typename T>
@@ -37,11 +39,9 @@ class PromiseBase : public std::promise<T> {
     this->set_exception(std::current_exception());
   }
 
-  template <typename U>
-  ScheduledTask<U> await_transform(Task<U>&& task) {
-    // Schedule child task on the same executor as ourself.
-    assert(executor_);
-    return std::move(task).schedule_on(*executor_);
+  template <typename U, typename R = U::BoundType>
+  R await_transform(U&& awaitable) {
+    return std::move(awaitable).schedule_on(*executor_);
   }
 
   void set_executor(Executor* executor) { executor_ = executor; }

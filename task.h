@@ -49,6 +49,7 @@ template <typename T>
 class Task {
  public:
   using promise_type = Promise<T>;
+  using BoundType = ScheduledTask<T>;
 
   explicit Task(promise_type& promise)
       : handle_(std::coroutine_handle<promise_type>::from_promise(promise)) {}
@@ -60,7 +61,7 @@ class Task {
     }
   }
 
-  ScheduledTask<T> schedule_on(Executor& executor) && {
+  BoundType schedule_on(Executor& executor) && {
     executor.schedule(handle_);
     auto handle = handle_;
     handle_ = nullptr;

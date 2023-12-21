@@ -9,7 +9,7 @@ executor.o: executor.cpp executor.h
 libcoro.a: executor.o
 	$(AR) rcs $@ $^
 
-main.o: main.cpp coro.h task.h promise.h promise_impl.h executor.h
+main.o: main.cpp coro.h task.h promise.h promise_impl.h executor.h event.h
 
 coro_demo: main.o libcoro.a
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(LIBS)

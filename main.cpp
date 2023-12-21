@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include "coro.h"
+#include "event.h"
 
 coro::Task<void> void_coro(int id, bool suspend) {
   if (suspend) {
@@ -37,23 +38,45 @@ coro::Task<int> coro_test() {
   printf("coro: await coro_add\n");
   int ret = co_await coro_add(40, 2);
 
-  printf("coro: return\n");
+  printf("coro: returning %d\n", ret);
   co_return ret;
+}
+
+coro::Task<void> coro_event(coro::Event& event) {
+  printf("coro_event: await event\n");
+  co_await event.wait();
+
+  printf("coro_event: event fired, returning\n");
+  co_return;
 }
 
 int main() {
   try {
     coro::LocalExecutor executor;
+    coro::Event event;
 
     auto task = coro_test().schedule_on(executor);
     auto void_task = void_coro(0, false).schedule_on(executor);
+    auto event_task = coro_event(event).schedule_on(executor);
 
-    while (executor.run_once()) {
+    do {
       printf("\nLOOP\n");
-    }
+    } while (executor.run_once());
 
     printf("\nLOOP DONE\n");
     printf("v = %d\n", std::move(task).get());
+
+    printf("signaling to event\n");
+    event.signal();
+
+    do {
+      printf("\nLOOP-2\n");
+    } while (executor.run_once());
+
+    printf("\nLOOP-2 DONE\n");
+
+    std::move(void_task).get();
+    std::move(event_task).get();
   } catch (std::exception& e) {
     printf("exc: %s\n", e.what());
   }
