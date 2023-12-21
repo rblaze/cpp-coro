@@ -19,4 +19,4 @@ clean:
 	rm -f coro_demo
 
 check:
-	clang-tidy -header-filter=.* main.cpp -- $(CXXFLAGS)
+	clang-tidy -header-filter=.* main.cpp executor.cpp -- $(CXXFLAGS)

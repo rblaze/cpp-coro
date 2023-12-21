@@ -1,31 +1,50 @@
 #include "executor.h"
 
-#include <cstdio>
+#include <cassert>
 
 namespace coro::impl {
 
-void LocalExecutor::run_once() {
-  for (auto handle : handles_) {
-    if (!handle.done()) {
-      printf("resume %p\n", handle.address());
-      handle.resume();
+bool LocalExecutor::run_once() {
+  for (auto job : jobs_) {
+    if (!job.suspended && !job.handle.done()) {
+      job.handle.resume();
     }
   }
+
+  jobs_.remove_if(
+      [](const auto& job) { return job.suspended || job.handle.done(); });
+
+  return !jobs_.empty();
 }
 
 void LocalExecutor::run() {
-  while (!handles_.empty()) {
-    printf("\nPOLLING %zu TASKS\n", handles_.size());
-    run_once();
-    handles_.remove_if([](const auto& handle) { return handle.done(); });
+  while (run_once()) {
+    // Iterate until no jobs are left.
   }
 }
 
 void LocalExecutor::schedule(const Handle& handle) {
-  handles_.push_back(handle);
+  for (auto& job : jobs_) {
+    if (job.handle == handle) {
+      assert(job.suspended);
+      job.suspended = false;
+      return;
+    }
+  }
+
+  // Job not found in the list, add it.
+  jobs_.push_back(Job{.handle = handle});
 }
+
 void LocalExecutor::deschedule(const Handle& handle) {
-  handles_.remove(handle);
+  // It's unsafe to remove elements from list while iterating over it, so mark
+  // job for later removal
+  for (auto& job : jobs_) {
+    if (job.handle == handle) {
+      job.suspended = true;
+      break;
+    }
+  }
 }
 
 }  // namespace coro::impl

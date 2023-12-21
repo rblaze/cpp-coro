@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <coroutine>
 #include <list>
 
@@ -17,14 +16,19 @@ class Executor {
 
 class LocalExecutor : public Executor {
  public:
-  void run_once();
+  bool run_once();
   void run();
 
   void schedule(const Handle& handle) override;
   void deschedule(const Handle& handle) override;
 
  private:
-  std::list<Handle> handles_;
+  struct Job {
+    Handle handle;
+    bool suspended = false;
+  };
+
+  std::list<Job> jobs_;
 };
 
 }  // namespace coro::impl

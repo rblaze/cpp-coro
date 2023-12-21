@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <cstdio>
 
 #include "coro.h"
 
@@ -48,7 +48,9 @@ int main() {
     auto task = coro_test().schedule_on(executor);
     auto void_task = void_coro(0, false).schedule_on(executor);
 
-    executor.run();
+    while (executor.run_once()) {
+      printf("\nLOOP\n");
+    }
 
     printf("\nLOOP DONE\n");
     printf("v = %d\n", std::move(task).get());

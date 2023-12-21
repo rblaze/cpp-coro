@@ -1,9 +1,5 @@
 #pragma once
 
-#include <cassert>
-#include <coroutine>
-#include <future>
-
 #include "executor.h"
 #include "task.h"
 #include "promise_impl.h"
@@ -16,7 +12,7 @@ using impl::LocalExecutor;
 // Utility types and functions
 
 Task<void> suspend() {
-  printf("awaaaaake\n");
+  // No-op, scheduling this task is enough to suspend the parent.
   co_return;
 }
 

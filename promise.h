@@ -24,7 +24,14 @@ class PromiseBase : public std::promise<T> {
 
   // Delay coroutine destruction until requested: std::future lacks API to check
   // if value is present, so we rely on handle.done() instead.
-  std::suspend_always final_suspend() const noexcept { return {}; }
+  std::suspend_always final_suspend() const noexcept {
+    if (parent_) {
+      assert(executor_);
+      executor_->schedule(parent_);
+    }
+
+    return {};
+  }
 
   void unhandled_exception() noexcept {
     this->set_exception(std::current_exception());
@@ -32,13 +39,17 @@ class PromiseBase : public std::promise<T> {
 
   template <typename U>
   ScheduledTask<U> await_transform(Task<U>&& task) {
+    // Schedule child task on the same executor as ourself.
+    assert(executor_);
     return std::move(task).schedule_on(*executor_);
   }
 
   void set_executor(Executor* executor) { executor_ = executor; }
+  void set_parent(std::coroutine_handle<> parent) { parent_ = parent; }
 
  private:
   Executor* executor_ = nullptr;
+  std::coroutine_handle<> parent_;
 };
 
 // Returning any type except void.
@@ -60,7 +71,7 @@ struct Promise : public PromiseBase<T> {
 // Coroutines returning void are special.
 template <>
 struct Promise<void> : public PromiseBase<void> {
-  Task<void> get_return_object() noexcept;// { return Task<void>(*this); }
+  Task<void> get_return_object() noexcept;  // { return Task<void>(*this); }
 
   void return_void() noexcept { this->set_value(); }
 };
