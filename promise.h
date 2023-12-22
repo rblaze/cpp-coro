@@ -39,7 +39,8 @@ class PromiseBase : public std::promise<T> {
     this->set_exception(std::current_exception());
   }
 
-  template <typename U, typename R = U::BoundType>
+  template <typename U,
+            typename R = typename std::remove_reference_t<U>::BoundType>
   R await_transform(U&& awaitable) {
     // clang-tidy complains about uninitialized executor_, which makes no sense:
     // worst case it is set to nullptr by default.

@@ -25,7 +25,7 @@ class Event {
   };
 
   bool signaled() const { return signaled_; }
-  Awaiter wait() { return Awaiter(*this); }
+  Awaiter wait() { return Awaiter{.event = *this}; }
   void signal() {
     signaled_ = true;
 
@@ -61,9 +61,7 @@ class BoundAwaiter {
     executor_.deschedule(parent);
     event_.add_waiter(parent, executor_);
   }
-  void await_resume() {
-    assert(event_.signaled());
-  }
+  void await_resume() { assert(event_.signaled()); }
 
  private:
   Event& event_;

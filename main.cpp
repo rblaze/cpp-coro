@@ -32,11 +32,14 @@ coro::Task<int> coro_test() {
   printf("coro: await void 1\n");
   co_await void_coro(1, false);
 
+  printf("coro: build coro_add\n");
+  auto coro_add_task = coro_add(40, 2);
+
   printf("coro: await void 2\n");
   co_await void_coro(2, true);
 
   printf("coro: await coro_add\n");
-  int ret = co_await coro_add(40, 2);
+  int ret = co_await coro_add_task;
 
   printf("coro: returning %d\n", ret);
   co_return ret;
